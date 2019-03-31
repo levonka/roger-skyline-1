@@ -1,0 +1,57 @@
+V.2 VM Part
+1. Disk size устанавливается во время создания новой виртуальной “оси” (fixed size - 8gb).
+2. 4.2 gb partition - при установке дебиана выбрать “use entire disk and LVM”.
+https://help.ubuntu.ru/wiki/lvm
+3. Для работы устанавливаем:
+	a) sudo права - устанавливаем пакет sudo (apt-get install sudo)
+	https://www.garron.me/en/linux/visudo-command-sudoers-file-sudo-default-editor.html
+		• Первым делом, как любой linux был установлен, надо скачать sudo и назначить
+			юзера правами администратора путем добавления записи в файл /etc/sudoers через
+			команду visudo (напрямую менять не надо).
+		• root ALL=(ALL) ALL - такая запись значит: "root пользователь может запускаться
+			через ВСЕ терминалы, действовать как ВСЕ(любые) пользователи и запускать ВСЕ(любые)
+			команды".
+			Пример: operator ALL= /sbin/poweroff - пользователь operator может из любого
+			терминала запускать команду выключения компьютера.
+		• подробности в ссылке.
+		• export VISUAL=vim; visudo - изменить редактор по умолчанию.
+	b) vim - для простоты работы.
+
+V.3 Network and Security Part
+1. Создать не root пользователя можно при установке linux. Другой способ - использовать
+	команду adduser (i.21,22).
+2. ...
+3. DHCP (Dynamic Host Configuration Protocol) - сервер, предоставляющий компьютеру
+	динамический IP. DHCP сервер автоматически присваивает компьютеру IP-адрес, а кроме
+	него маску подсети, основной шлюз и DNS сервер. Чтобы посмотреть информацию от dhcp
+	сервера изспользуй команду ifconfig -a (mac) или ip a (linux).
+https://zalinux.ru/?p=402 - о ifconfig и примеры с ip.
+https://www.youtube.com/watch?v=e6-TaH5bkjo - о DHCP.
+http://yapro.ru/web-master/unix/virtualbox-statichniy-ip.html - статичный ip в VM.
+https://www.swiftstack.com/docs/install/configure_networking.html#adding-the-fqdn-hostname - статический ip.
+http://qaru.site/questions/456471/static-ip-in-virtualbox-machine-with-ubuntu-1604 - пример как заполнить графу в /etc/network/interfaces.
+	a) IP адрес DHCP сервера показан в строке “dhcp-server-identifier” в файле
+		/var/lib/dhcp/dhclient.... Также немного информации - sudo dhclient enp0s3 -v
+	https://www.unixmen.com/find-ip-address-dhcp-server/
+	b) Основные настройки сети и имени хоста лежат в папках:
+		• /etc/network/interfaces describes the network interfaces
+		• /etc/hostname configures the nameserver credentials
+		• /etc/hosts resolves IP addresses to hostnames
+		Как только новая конфигурация сохранена, интерфейс должен быть перезапущен.
+		• service networking restart
+		...
+4. SSH сервис:
+	a) Изменить порт:
+	https://www.godaddy.com/help/changing-the-ssh-port-for-your-linux-server-7306
+		• vim /etc/ssh/sshd_config
+		• # Port 22 - раскомментировать и выставить любой порт.
+		• service sshd restart - перезагрузить ssh сервис.
+	b) Создать RSA-ключ:
+		• ssh-keygen -t rsa -b 4096
+		• ~/.ssh/ - рассположение ключа.
+		• scp ~/.ssh/id_rsa.pub levonka@ip:/home/levonka - отправить ключ на сервер, или
+		• ssh-copy-id levonka@ip
+	https://stackoverflow.com/questions/23456909/ssh-directory-does-not-exist-debian
+	c) Доступ одновременно к локальному компьютеру и серверу:
+		• sftp levonka@ip
+	https://www.digitalocean.com/community/tutorials/sftp-ru
