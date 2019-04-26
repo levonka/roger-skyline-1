@@ -14,8 +14,17 @@ https://help.ubuntu.ru/wiki/lvm
 			Пример: operator ALL= /sbin/poweroff - пользователь operator может из любого
 			терминала запускать команду выключения компьютера.
 		• подробности в ссылке.
+		• в visudo написать:
+			a) Runas_Alias OP = root
+			b) levonka ALL=(OP) ALL
 		• export VISUAL=vim; visudo - изменить редактор по умолчанию.
 	b) vim - для простоты работы.
+	c) optional - apt-get install net-tools - netstat, ifconfig, etc.
+	d) ufw - firewall.
+	e) fail2ban - dos protection (не точно).
+	f) portsentry - scan protection.
+	g) mailutils - mail.
+	i) git - for server.
 
 V.3 Network and Security Part
 1. Создать не root пользователя можно при установке linux. Другой способ - использовать
@@ -25,6 +34,11 @@ V.3 Network and Security Part
 	динамический IP. DHCP сервер автоматически присваивает компьютеру IP-адрес, а кроме
 	него маску подсети, основной шлюз и DNS сервер. Чтобы посмотреть информацию от dhcp
 	сервера изспользуй команду ifconfig -a (mac) или ip a (linux).
+	a) В /etc/network/interfaces прописать:
+		auto enp0s8
+		iface enp0s8 inet static
+		address 192.168.58.53
+		netmask 255.255.255.252
 https://zalinux.ru/?p=402 - о ifconfig и примеры с ip.
 https://www.youtube.com/watch?v=e6-TaH5bkjo - о DHCP.
 http://yapro.ru/web-master/unix/virtualbox-statichniy-ip.html - статичный ip в VM.
@@ -45,13 +59,83 @@ http://qaru.site/questions/456471/static-ip-in-virtualbox-machine-with-ubuntu-16
 	https://www.godaddy.com/help/changing-the-ssh-port-for-your-linux-server-7306
 		• vim /etc/ssh/sshd_config
 		• # Port 22 - раскомментировать и выставить любой порт.
+		• PermitRootLogin without-password
+		• PubkeyAuthentication yes
+		• PasswordAuthentication no
 		• service sshd restart - перезагрузить ssh сервис.
-	b) Создать RSA-ключ:
+	b) Создать RSA-ключ и сделать подключение к серверу с его помощью:
 		• ssh-keygen -t rsa -b 4096
 		• ~/.ssh/ - рассположение ключа.
-		• scp ~/.ssh/id_rsa.pub levonka@ip:/home/levonka - отправить ключ на сервер, или
-		• ssh-copy-id levonka@ip
+		• scp ~/.ssh/id_rsa.pub levonka@ip:/home/levonka - отправить ключ на сервер
+		• или: ssh-copy-id levonka@ip
+		• /etc/ssh/sshd-config - изменить опцию на: PasswordAuthentication no
+		 					   - изменить опцию на: UsePAM no
+		 					   - изменить опцию на: ChellengeResponseAuthentication no
+	https://www.youtube.com/watch?v=n9QBoXKot40
 	https://stackoverflow.com/questions/23456909/ssh-directory-does-not-exist-debian
 	c) Доступ одновременно к локальному компьютеру и серверу:
 		• sftp levonka@ip
 	https://www.digitalocean.com/community/tutorials/sftp-ru
+	d) SSH Aliases and the Almighty Config File:
+	https://www.youtube.com/watch?v=6MqWFnm79uY&list=PLtK75qxsQaMII75AbcuIruao1k2qdxwjg&index=4
+https://wiki.debian.org/SSH
+5. Firewall - применяется для ограничения доступа к тем или иным приложениям:
+	a) iptables - утилита позволяющая фильтровать входные и "выходные" пакеты.
+	https://losst.ru/nastrojka-iptables-dlya-chajnikov
+	b) ufw - упрощенный вариант манипулирования iptables.
+		• ufw default deny incoming - выключить входящие запросы.
+		• ufw default allow outgoing - включить выходящие запросы.
+		• ufw allow 8822/tcp - открыть порт для ssh.
+		• ufw allow http - открыть порт для http.
+		• ufw allow https - открыть порт для https.
+	https://www.digitalocean.com/community/tutorials/how-to-set-up-a-firewall-with-ufw-on-ubuntu-16-04
+	https://www.digitalocean.com/community/tutorials/initial-server-setup-with-debian-9
+	https://help.ubuntu.ru/wiki/руководство_по_ubuntu_server/безопасность/firewall
+	с) Чтобы проверить порты - nmap:
+		• nmap 127.0.0.1 -p 1-65535
+6. fail2ban - защита от перебора пароля.
+	• sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+	• sudo vim /etc/fail2ban/jail.local
+		a) ignoreip = 127.0.0.1/8 192.168.58.53/30
+		b) заменить всё как на видео по ссылке ниже.
+		e) sudo service fail2ban restart
+	https://vps.ua/wiki/install-linux-vps/security/configuring-fail2ban/#a-3
+	https://www.youtube.com/watch?time_continue=39&v=598URWeNqH8
+	• разблокировать ip - https://makandracards.com/operations/39427-how-to-unban-host-with-fail2ban
+7.	portsentry - утилита защищающая от сканирований.
+	• В /etc/portsentry/portsentry.conf изменить:
+		a) BLOCK_UDP="1" BLOCK_TCP="1"
+		b) KILL_ROUTE="/sbin/iptables -I INPUT -s $TARGET$ -j DROP"
+	• В /etc/default/portsentry изменить:
+		a) TCP_MODE="atcp"
+		b) UDP_MODE="audp"
+	• В /etc/portsentry/portsentry.ignore.static добавить:
+		a) 192.168.58.53/255.255.255.252
+	• /etc/init.d/portsentry restart
+	• В системных логах (/var/log/syslog) должно появится:
+		a) debian portsentry[1001]: adminalert: PortSentry is now active and listening.
+	• После этих манипуляций защита от сканирований установлена.
+	https://www.youtube.com/watch?v=24M8dStXARg
+	http://aidalinux.ru/w/PortSentry_-_средство_противодействия_сканированию_портов
+	http://www.smeegul.kiev.ua/portsentry.html
+	https://www.lissyara.su/articles/freebsd/security/portsentry/
+8. sudo service --status-all - все сервисы нужны, поэтому ничего не удаляем.
+9. Обновление пакетов:
+	• содержание скрипта см в папке.
+	• sudo crontab:
+		a) * 4 * * *	/update_script.sh
+		b) @reboot		/update_script.sh
+10.
+https://ru.wikipedia.org/wiki/Md5sum
+http://rus-linux.net/MyLDP/consol/mails.html
+
+VI.1 Web Part
+1. Скачиваем apache2.
+	• /etc/init.d/apache2 - статус, рестарт, стоп, старт сервера.
+	• /var/www/html/ - папка с сайтом.
+
+Отправка на сервер:
+	• scp -P 8822 -r roger-skiline-1 levonka@192.168.58.54:/home/levonka/
+
+Создание ключа ssl:
+	• https://www.8host.com/blog/sozdanie-samopodpisannogo-ssl-sertifikata-dlya-apache-v-ubuntu-16-04/
